@@ -275,7 +275,7 @@ mod app {
         let clock = SystemTimer::new(|| Systick::now().ticks());
 
         // Configure the microcontroller
-        let (mut stabilizer, _pounder) = hardware::setup::setup::<Settings, 3>(
+        let (stabilizer, _pounder) = hardware::setup::setup::<Settings, 3>(
             c.core,
             c.device,
             clock,
@@ -342,7 +342,7 @@ mod app {
         usb::spawn().unwrap();
 
         // Start recording digital input timestamps.
-        stabilizer.timestamp_timer.start();
+        // stabilizer.timestamp_timer.start();
 
         // Enable the timestamper.
         local.timestamper.start();

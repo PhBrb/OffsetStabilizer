@@ -115,7 +115,6 @@ pub struct StabilizerDevices<
     pub dacs: (dac::Dac0Output, dac::Dac1Output),
     pub timestamper: InputStamper,
     pub adc_dac_timer: timers::SamplingTimer,
-    pub timestamp_timer: timers::TimestampTimer,
     pub net: NetworkDevices,
     pub digital_inputs: (DigitalInput0, DigitalInput1),
     pub eem: Eem,
@@ -589,7 +588,7 @@ where
 
     let input_stamper = {
         let trigger = gpioa.pa3.into_alternate();
-        InputStamper::new(trigger, timestamp_timer_channels.ch4)
+        InputStamper::new(trigger, timestamp_timer_channels.ch4, timestamp_timer)
     };
 
     let digital_inputs = {
@@ -1244,7 +1243,6 @@ where
         timestamper: input_stamper,
         net: network_devices,
         adc_dac_timer: sampling_timer,
-        timestamp_timer,
         digital_inputs,
         eem,
         usb: usb_device,
