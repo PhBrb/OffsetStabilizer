@@ -208,7 +208,7 @@ mod app {
         let clock = SystemTimer::new(|| monotonics::now().ticks() as u32);
 
         // Configure the microcontroller
-        let (mut stabilizer, _pounder) = hardware::setup::setup(
+        let (mut stabilizer, mut beat_timer) = hardware::setup::setup(
             c.core,
             c.device,
             clock,
@@ -266,6 +266,7 @@ mod app {
         local.dacs.1.start();
 
         stabilizer.timestamper.start();
+        beat_timer.start();
 
         // Spawn a settings update for default settings.
         settings_update::spawn().unwrap();

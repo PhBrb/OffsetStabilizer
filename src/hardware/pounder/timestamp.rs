@@ -74,6 +74,7 @@ impl Timestamper {
 
     /// Start collecting timestamps.
     pub fn start(&mut self) {
+        self.timer.start();
         self.capture_channel.enable();
     }
 
