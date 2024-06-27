@@ -24,12 +24,13 @@
 //!
 //! This module only supports DI0 for timestamping due to trigger constraints on the DIx pins. If
 //! timestamping is desired in DI1, a separate timer + capture channel will be necessary.
-use super::{hal, timers};
+use super::{hal, timers::{self, TimestampTimer}};
 
 /// The timestamper for DI0 reference clock inputs.
 pub struct InputStamper {
     _di0_trigger: hal::gpio::gpioa::PA3<hal::gpio::Alternate<2>>,
     capture_channel: timers::tim5::Channel4InputCapture,
+    timestamp_timer: TimestampTimer,
 }
 
 impl InputStamper {
@@ -41,6 +42,7 @@ impl InputStamper {
     pub fn new(
         trigger: hal::gpio::gpioa::PA3<hal::gpio::Alternate<2>>,
         timer_channel: timers::tim5::Channel4,
+        timestamp_timer: TimestampTimer,
     ) -> Self {
         // Utilize the TIM5 CH4 as an input capture channel - use TI4 (the DI0 input trigger) as the
         // capture source.
@@ -54,12 +56,14 @@ impl InputStamper {
         Self {
             capture_channel: input_capture,
             _di0_trigger: trigger,
+            timestamp_timer: timestamp_timer
         }
     }
 
     /// Start to capture timestamps on DI0.
     #[allow(dead_code)]
     pub fn start(&mut self) {
+        self.timestamp_timer.start();
         self.capture_channel.enable();
     }
 
