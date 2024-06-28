@@ -19,24 +19,14 @@
 use crate::hardware::timers;
 use stm32h7xx_hal as hal;
 
-/// Software unit to timestamp stabilizer ADC samples using an external pounder reference clock.
-pub struct Timestamper {
+pub struct InputCaptureTimer {
     timer: timers::PounderTimestampTimer,
     capture_channel: timers::tim8::Channel1InputCapture,
+    previous_capture: u16,
+    previous_diff: u16,
 }
 
-impl Timestamper {
-    /// Construct the pounder sample timestamper.
-    ///
-    /// # Args
-    /// * `timestamp_timer` - The timer peripheral used for capturing timestamps from.
-    /// * `capture_channel` - The input capture channel for collecting timestamps.
-    /// * `sampling_timer` - The stabilizer ADC sampling timer.
-    /// * `_clock_input` - The input pin for the external clock from Pounder.
-    /// * `batch_size` - The number of samples in each batch.
-    ///
-    /// # Returns
-    /// The new pounder timestamper in an operational state.
+impl InputCaptureTimer {
     pub fn new(
         mut timestamp_timer: timers::PounderTimestampTimer,
         capture_channel: timers::tim8::Channel1,
@@ -69,6 +59,8 @@ impl Timestamper {
         Self {
             timer: timestamp_timer,
             capture_channel: input_capture,
+            previous_capture: 0,
+            previous_diff: 0,
         }
     }
 
@@ -83,12 +75,20 @@ impl Timestamper {
         self.timer.set_period_ticks(period);
     }
 
-    /// Obtain a timestamp.
-    ///
-    /// # Returns
-    /// A `Result` potentially indicating capture overflow and containing a `Option` of a captured
-    /// timestamp.
-    pub fn latest_timestamp(&mut self) -> Result<Option<u16>, Option<u16>> {
-        self.capture_channel.latest_capture()
+    pub fn latest_timestamp_diff(&mut self) -> u16 {
+        let diff =  match self.capture_channel.latest_capture() {
+            Ok(Some(value)) => {
+                let tmp = value - self.previous_capture; //this assumes that we are never missing a capture
+                self.previous_capture = value;
+                tmp
+            },
+            Ok(None) => self.previous_diff,
+            Err(Some(_value)) => 0, //0 for testing if this ever happens
+            Err(None) => self.previous_diff, 
+        };
+        self.previous_diff = diff;
+
+        diff
     }
+
 }
