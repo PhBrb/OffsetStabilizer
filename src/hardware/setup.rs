@@ -130,7 +130,7 @@ pub struct PounderDevices {
     pub dds_output: DdsOutput,
 
     #[cfg(not(feature = "pounder_v1_0"))]
-    pub timestamper: pounder::timestamp::Timestamper,
+    pub timestamper: pounder::timestamp::InputCaptureTimer,
 }
 
 #[link_section = ".sram3.eth"]
@@ -210,7 +210,7 @@ pub fn setup<C, const Y: usize>(
     clock: SystemTimer,
     batch_size: usize,
     sample_ticks: u32,
-) -> (StabilizerDevices<C, Y>, crate::hardware::pounder::timestamp::Timestamper)
+) -> (StabilizerDevices<C, Y>, crate::hardware::pounder::timestamp::InputCaptureTimer)
 where
     C: serial_settings::Settings + AppSettings,
 {
@@ -873,7 +873,7 @@ where
     timestamp_timer8.set_period_ticks(u16::MAX);
     let tim8_channels = timestamp_timer8.channels();
 
-    let pounder_stamper = pounder::timestamp::Timestamper::new(
+    let pounder_stamper = pounder::timestamp::InputCaptureTimer::new(
         timestamp_timer8,
         tim8_channels.ch1,
         &mut sampling_timer,
