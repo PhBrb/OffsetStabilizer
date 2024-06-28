@@ -369,25 +369,25 @@ pub fn setup(
     let mut timestamp_timer = {
         // The timer frequency is manually adjusted below, so the 1KHz setting here is a
         // dont-care.
-        let mut timer5 =
+        let mut timer1 =
             device
-                .TIM5
-                .timer(1.kHz(), ccdr.peripheral.TIM5, &ccdr.clocks);
+                .TIM1
+                .timer(1.kHz(), ccdr.peripheral.TIM1, &ccdr.clocks);
 
         // Configure the timer to count at the designed tick rate. We will manually set the
         // period below.
-        timer5.pause();
-        timer5.set_tick_freq(design_parameters::TIMER_FREQUENCY.convert());
+        timer1.pause();
+        timer1.set_tick_freq(design_parameters::TIMER_FREQUENCY.convert());
 
         // The timestamp timer runs at the counter cycle period as the sampling timers.
         // To accomodate this, we manually set the prescaler identical to the sample
         // timer, but use maximum overflow period.
-        let mut timer = timers::TimestampTimer::new(timer5);
+        let mut timer = timers::TimestampTimer::new(timer1);
 
         // TODO: Check hardware synchronization of timestamping and the sampling timers
         // for phase shift determinism.
 
-        timer.set_period_ticks(u32::MAX);
+        timer.set_period_ticks(u16::MAX);
 
         timer
     };
@@ -568,7 +568,7 @@ pub fn setup(
     };
 
     let input_stamper = {
-        let trigger = gpioa.pa3.into_alternate();
+        let trigger = gpioe.pe7.into_alternate();
         InputStamper::new(trigger, timestamp_timer_channels.ch4, timestamp_timer)
     };
 

@@ -37,9 +37,9 @@ impl InputCaptureTimer {
         // The sampling timer should generate a trigger output when the timer overflows
         sampling_timer.generate_trigger(timers::TriggerGenerator::Update);
 
-        // The timestamp timer trigger input should use TIM5 (SamplingTimer)'s trigger, which is
-        // mapped to ITR3.
-        timestamp_timer.set_trigger_source(timers::TriggerSource::Trigger3);
+        // The timestamp timer trigger input should use TIM1 (SamplingTimer)'s trigger, which is
+        // mapped to ITR0.
+        timestamp_timer.set_trigger_source(timers::TriggerSource::Trigger0);
 
         // The capture channel should capture whenever the trigger input occurs.
         let mut input_capture = capture_channel
