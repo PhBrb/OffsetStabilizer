@@ -113,7 +113,7 @@ pub struct StabilizerDevices<
     pub afes: (AFE0, AFE1),
     pub adcs: (adc::Adc0Input, adc::Adc1Input),
     pub dacs: (dac::Dac0Output, dac::Dac1Output),
-    pub timestamper: InputStamper,
+    pub timestamper: crate::hardware::timers::TimestampTimer,
     pub adc_dac_timer: timers::SamplingTimer,
     pub net: NetworkDevices,
     pub digital_inputs: (DigitalInput0, DigitalInput1),
@@ -386,6 +386,7 @@ where
     let shadow_sampling_timer_channels = shadow_sampling_timer.channels();
 
     let mut timestamp_timer = {
+        let _etr_pin = gpioe.pe7.into_alternate::<1>(); //see alternate function table
         // The timer frequency is manually adjusted below, so the 1KHz setting here is a
         // dont-care.
         let mut timer1 =
@@ -409,8 +410,6 @@ where
 
         timer
     };
-
-    let timestamp_timer_channels = timestamp_timer.channels();
 
     // Configure the SPI interfaces to the ADCs and DACs.
     let adcs = {
@@ -583,11 +582,6 @@ where
         };
 
         (afe0, afe1)
-    };
-
-    let input_stamper = {
-        let trigger = gpioe.pe7.into_alternate();
-        InputStamper::new(trigger, timestamp_timer_channels.ch4, timestamp_timer)
     };
 
     let digital_inputs = {
@@ -875,9 +869,8 @@ where
     let pounder_stamper = pounder::timestamp::InputCaptureTimer::new(
         timestamp_timer8,
         tim8_channels.ch1,
-        &mut sampling_timer,
+        &mut timestamp_timer,
         etr_pin,
-        batch_size,
     );
 
     #[derive(Copy, Clone, Debug, PartialEq)]
@@ -1070,7 +1063,7 @@ where
             adc3.create_channel(hal::adc::Temperature::new()),
         ),
         usb_serial: usb_terminal,
-        timestamper: input_stamper,
+        timestamper: timestamp_timer,
         net: network_devices,
         adc_dac_timer: sampling_timer,
         digital_inputs,
