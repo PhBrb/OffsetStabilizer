@@ -806,7 +806,7 @@ pub fn setup(
     // output. As a result, dividing the 125MHz sync-clk provides a 31.25MHz tick rate for
     // the timestamp timer. 31.25MHz corresponds with a 32ns tick rate.
     // This is less than fCK_INT/3 of the timer as required for oversampling the trigger.
-    timestamp_timer8.set_external_clock(timers::Prescaler::Div4);
+    timestamp_timer8.set_external_clock(timers::Prescaler::Div2);
     timestamp_timer8.start();
 
     // Set the timer to wrap at the u16 boundary to meet the PLL periodicity.

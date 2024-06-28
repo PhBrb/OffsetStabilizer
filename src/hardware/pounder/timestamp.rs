@@ -45,16 +45,8 @@ impl InputCaptureTimer {
         let mut input_capture = capture_channel
             .into_input_capture(timers::tim8::CaptureSource1::Trc);
 
-        let prescaler = match batch_size {
-            1 => timers::Prescaler::Div1,
-            2 => timers::Prescaler::Div2,
-            4 => timers::Prescaler::Div4,
-            8 => timers::Prescaler::Div8,
-            _ => panic!("Batch size does not support DDS timestamping"),
-        };
-
         // Capture at the batch period.
-        input_capture.configure_prescaler(prescaler);
+        input_capture.configure_prescaler(timers::Prescaler::Div1);
 
         Self {
             timer: timestamp_timer,
