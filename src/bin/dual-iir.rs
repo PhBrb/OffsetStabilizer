@@ -198,6 +198,7 @@ mod app {
         afes: (AFE0, AFE1),
         adcs: (Adc0Input, Adc1Input),
         dacs: (Dac0Output, Dac1Output),
+        beat_timer: crate::hardware::pounder::timestamp::InputCaptureTimer,
         iir_state: [[iir::Vec5<f32>; IIR_CASCADE_LENGTH]; 2],
         generator: FrameGenerator,
         cpu_temp_sensor: stabilizer::hardware::cpu_temp_sensor::CpuTempSensor,
@@ -208,7 +209,7 @@ mod app {
         let clock = SystemTimer::new(|| monotonics::now().ticks() as u32);
 
         // Configure the microcontroller
-        let (mut stabilizer, mut beat_timer) = hardware::setup::setup(
+        let (mut stabilizer, beat_timer) = hardware::setup::setup(
             c.core,
             c.device,
             clock,
@@ -254,6 +255,7 @@ mod app {
             afes: stabilizer.afes,
             adcs: stabilizer.adcs,
             dacs: stabilizer.dacs,
+            beat_timer: beat_timer,
             iir_state: [[[0.; 5]; IIR_CASCADE_LENGTH]; 2],
             generator,
             cpu_temp_sensor: stabilizer.temperature_sensor,
@@ -266,7 +268,7 @@ mod app {
         local.dacs.1.start();
 
         stabilizer.timestamper.start();
-        beat_timer.start();
+        local.beat_timer.start();
 
         // Spawn a settings update for default settings.
         settings_update::spawn().unwrap();
@@ -300,7 +302,7 @@ mod app {
     ///
     /// Because the ADC and DAC operate at the same rate, these two constraints actually implement
     /// the same time bounds, meeting one also means the other is also met.
-    #[task(binds=DMA1_STR4, local=[digital_inputs, adcs, dacs, iir_state, generator], shared=[settings, signal_generator, telemetry], priority=3)]
+    #[task(binds=DMA1_STR4, local=[digital_inputs, adcs, dacs, beat_timer, iir_state, generator], shared=[settings, signal_generator, telemetry], priority=3)]
     #[link_section = ".itcm.process"]
     fn process(c: process::Context) {
         let process::SharedResources {
@@ -313,6 +315,7 @@ mod app {
             digital_inputs,
             adcs: (adc0, adc1),
             dacs: (dac0, dac1),
+            beat_timer,
             iir_state,
             generator,
         } = c.local;
@@ -332,6 +335,14 @@ mod app {
 
                     // Preserve instruction and data ordering w.r.t. DMA flag access.
                     fence(Ordering::SeqCst);
+
+                    let timestamp_diff = beat_timer.latest_timestamp_diff();
+                    // Set all values in adc_samples to new_value
+                    for channel in 0..adc_samples.len() {
+                        for sample in adc_samples[channel].iter_mut() {
+                            *sample = timestamp_diff;
+                        }
+                    }
 
                     for channel in 0..adc_samples.len() {
                         adc_samples[channel]
