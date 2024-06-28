@@ -9,7 +9,6 @@ pub mod cpu_temp_sensor;
 pub mod dac;
 pub mod delay;
 pub mod design_parameters;
-pub mod input_stamper;
 pub mod pounder;
 pub mod serial_terminal;
 pub mod setup;
