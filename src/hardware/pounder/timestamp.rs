@@ -44,12 +44,12 @@ impl Timestamper {
         _clock_input: hal::gpio::gpioa::PA0<hal::gpio::Alternate<3>>,
         batch_size: usize,
     ) -> Self {
-        // The sampling timer should generate a trigger output when CH1 comparison occurs.
-        sampling_timer.generate_trigger(timers::TriggerGenerator::ComparePulse);
+        // The sampling timer should generate a trigger output when the timer overflows
+        sampling_timer.generate_trigger(timers::TriggerGenerator::Update);
 
-        // The timestamp timer trigger input should use TIM2 (SamplingTimer)'s trigger, which is
-        // mapped to ITR1.
-        timestamp_timer.set_trigger_source(timers::TriggerSource::Trigger1);
+        // The timestamp timer trigger input should use TIM5 (SamplingTimer)'s trigger, which is
+        // mapped to ITR3.
+        timestamp_timer.set_trigger_source(timers::TriggerSource::Trigger3);
 
         // The capture channel should capture whenever the trigger input occurs.
         let mut input_capture = capture_channel
