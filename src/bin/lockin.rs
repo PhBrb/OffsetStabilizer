@@ -48,7 +48,6 @@ use stabilizer::{
         afe::Gain,
         dac::{Dac0Output, Dac1Output, DacCode},
         hal,
-        input_stamper::InputStamper,
         signal_generator,
         timers::SamplingTimer,
         DigitalInput0, DigitalInput1, SerialTerminal, SystemTimer, Systick,
