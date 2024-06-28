@@ -397,5 +397,5 @@ macro_rules! timer_channels {
 timer_channels!(SamplingTimer, TIM2, u32);
 timer_channels!(ShadowSamplingTimer, TIM3, u16);
 
-timer_channels!(TimestampTimer, TIM1, u16);
-timer_channels!(PounderTimestampTimer, TIM8, u16);
+timer_channels!(ReferenceTimer, TIM1, u16);
+timer_channels!(BeatTimer, TIM8, u16);

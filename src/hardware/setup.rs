@@ -111,7 +111,7 @@ pub struct StabilizerDevices {
     pub afes: (AFE0, AFE1),
     pub adcs: (adc::Adc0Input, adc::Adc1Input),
     pub dacs: (dac::Dac0Output, dac::Dac1Output),
-    pub timestamper: crate::hardware::timers::TimestampTimer,
+    pub timestamper: crate::hardware::timers::ReferenceTimer,
     pub adc_dac_timer: timers::SamplingTimer,
     pub net: NetworkDevices,
     pub digital_inputs: (DigitalInput0, DigitalInput1),
@@ -376,7 +376,7 @@ pub fn setup(
                 .timer(1.kHz(), ccdr.peripheral.TIM1, &ccdr.clocks);
         timer1.pause();
 
-        let mut ref_timer1 = timers::TimestampTimer::new(timer1);
+        let mut ref_timer1 = timers::ReferenceTimer::new(timer1);
 
         ref_timer1.set_external_clock(timers::Prescaler::Div1);
 
@@ -787,7 +787,7 @@ pub fn setup(
             device
                 .TIM8
                 .timer(1.kHz(), ccdr.peripheral.TIM8, &ccdr.clocks);
-        let mut beat_timer8 = timers::PounderTimestampTimer::new(tim8);
+        let mut beat_timer8 = timers::BeatTimer::new(tim8);
 
         beat_timer8.set_external_clock(timers::Prescaler::Div2);
         beat_timer8.start();

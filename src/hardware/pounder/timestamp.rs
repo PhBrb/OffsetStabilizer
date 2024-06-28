@@ -3,7 +3,7 @@ use crate::hardware::timers;
 use stm32h7xx_hal as hal;
 
 pub struct InputCaptureTimer {
-    timer: timers::PounderTimestampTimer,
+    timer: timers::BeatTimer,
     capture_channel: timers::tim8::Channel1InputCapture,
     previous_capture: u16,
     previous_diff: u16,
@@ -11,16 +11,16 @@ pub struct InputCaptureTimer {
 
 impl InputCaptureTimer {
     pub fn new(
-        mut timestamp_timer: timers::PounderTimestampTimer,
+        mut reference_timer: timers::BeatTimer,
         capture_channel: timers::tim8::Channel1,
-        sampling_timer: &mut timers::TimestampTimer,
+        beat_timer: &mut timers::ReferenceTimer,
         _clock_input: hal::gpio::gpioa::PA0<hal::gpio::Alternate<3>>,
     ) -> Self {
         // Trigger source should trigger on its overflow
-        sampling_timer.generate_trigger(timers::TriggerGenerator::Update);
+        beat_timer.generate_trigger(timers::TriggerGenerator::Update);
 
         // TIM1&8 are connected by ITR0
-        timestamp_timer.set_trigger_source(timers::TriggerSource::Trigger0);
+        reference_timer.set_trigger_source(timers::TriggerSource::Trigger0);
 
         // The capture channel should capture whenever the trigger input occurs.
         let mut input_capture = capture_channel
@@ -30,7 +30,7 @@ impl InputCaptureTimer {
         input_capture.configure_prescaler(timers::Prescaler::Div1);
 
         Self {
-            timer: timestamp_timer,
+            timer: reference_timer,
             capture_channel: input_capture,
             previous_capture: 0,
             previous_diff: 0,
