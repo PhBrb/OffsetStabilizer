@@ -30,9 +30,8 @@ impl InputCaptureTimer {
     pub fn new(
         mut timestamp_timer: timers::PounderTimestampTimer,
         capture_channel: timers::tim8::Channel1,
-        sampling_timer: &mut timers::SamplingTimer,
+        sampling_timer: &mut timers::TimestampTimer,
         _clock_input: hal::gpio::gpioa::PA0<hal::gpio::Alternate<3>>,
-        batch_size: usize,
     ) -> Self {
         // The sampling timer should generate a trigger output when the timer overflows
         sampling_timer.generate_trigger(timers::TriggerGenerator::Update);
