@@ -386,7 +386,7 @@ pub fn setup(
 
         timer.set_external_clock(timers::Prescaler::Div1);
 
-        timer.set_period_ticks(u16::MAX);
+        timer.set_period_ticks(1000-1);
 
         timer
     };
