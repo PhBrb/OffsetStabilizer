@@ -28,8 +28,8 @@ use super::{hal, timers::{self, TimestampTimer}};
 
 /// The timestamper for DI0 reference clock inputs.
 pub struct InputStamper {
-    _di0_trigger: hal::gpio::gpioa::PA3<hal::gpio::Alternate<2>>,
-    capture_channel: timers::tim5::Channel4InputCapture,
+    _di0_trigger: hal::gpio::gpioe::PE7<hal::gpio::Alternate<1>>,
+    capture_channel: timers::tim1::Channel4InputCapture,
     timestamp_timer: TimestampTimer,
 }
 
@@ -40,14 +40,14 @@ impl InputStamper {
     /// * `trigger` - The capture trigger input pin.
     /// * `timer_channel - The timer channel used for capturing timestamps.
     pub fn new(
-        trigger: hal::gpio::gpioa::PA3<hal::gpio::Alternate<2>>,
-        timer_channel: timers::tim5::Channel4,
+        trigger: hal::gpio::gpioe::PE7<hal::gpio::Alternate<1>>,
+        timer_channel: timers::tim1::Channel4,
         timestamp_timer: TimestampTimer,
     ) -> Self {
-        // Utilize the TIM5 CH4 as an input capture channel - use TI4 (the DI0 input trigger) as the
+        // Utilize the TIM1 CH4 as an input capture channel - use TI4 (the DI0 input trigger) as the
         // capture source.
         let mut input_capture =
-            timer_channel.into_input_capture(timers::tim5::CaptureSource4::Ti4);
+            timer_channel.into_input_capture(timers::tim1::CaptureSource4::Ti4);
 
         // Do not prescale the input capture signal - require 8 consecutive samples to record an
         // incoming event - this prevents spurious glitches from triggering captures.
@@ -65,17 +65,5 @@ impl InputStamper {
     pub fn start(&mut self) {
         self.timestamp_timer.start();
         self.capture_channel.enable();
-    }
-
-    /// Get the latest timestamp that has occurred.
-    ///
-    /// # Note
-    /// This function must be called at least as often as timestamps arrive.
-    /// If an over-capture event occurs, this function will clear the overflow,
-    /// and return a new timestamp of unknown recency an `Err()`.
-    /// Note that this indicates at least one timestamp was inadvertently dropped.
-    #[allow(dead_code)]
-    pub fn latest_timestamp(&mut self) -> Result<Option<u32>, Option<u32>> {
-        self.capture_channel.latest_capture()
     }
 }

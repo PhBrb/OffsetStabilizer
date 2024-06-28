@@ -4,10 +4,10 @@ use num_enum::TryFromPrimitive;
 
 use hal::stm32::{
     // TIM1 and TIM8 have identical registers.
+    tim1 as __tim1,
     tim1 as __tim8,
     tim2 as __tim2,
     // TIM2 and TIM5 have identical registers.
-    tim2 as __tim5,
     tim3 as __tim3,
 };
 
@@ -397,5 +397,5 @@ macro_rules! timer_channels {
 timer_channels!(SamplingTimer, TIM2, u32);
 timer_channels!(ShadowSamplingTimer, TIM3, u16);
 
-timer_channels!(TimestampTimer, TIM5, u32);
+timer_channels!(TimestampTimer, TIM1, u16);
 timer_channels!(PounderTimestampTimer, TIM8, u16);
