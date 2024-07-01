@@ -381,7 +381,7 @@ mod app {
                             .zip(dac_samples[channel].iter_mut())
                             .zip(&mut source[channel])
                             .map(|((ai, di), signal)| {
-                                let x = f32::from(*ai as i16);
+                                let x = f32::from(*ai as u16);
                                 let y = settings.iir_ch[channel]
                                     .iter()
                                     .zip(iir_state[channel].iter_mut())
