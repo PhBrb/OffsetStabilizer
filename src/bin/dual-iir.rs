@@ -340,7 +340,7 @@ mod app {
                     // Set all values in adc_samples to new_value
                     for channel in 0..adc_samples.len() {
                         for sample in adc_samples[channel].iter_mut() {
-                            *sample = timestamp_diff;
+                            *sample = timestamp_diff*2 - 5000; // create 50 MHz offset
                         }
                     }
 
