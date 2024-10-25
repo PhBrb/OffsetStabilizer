@@ -340,7 +340,7 @@ mod app {
                     // Set all values in adc_samples to new_value
                     for channel in 0..adc_samples.len() {
                         for sample in adc_samples[channel].iter_mut() {
-                            *sample = timestamp_diff*2 - 5000; // create 50 MHz offset
+                            *sample = timestamp_diff*2;
                         }
                     }
 
@@ -350,7 +350,7 @@ mod app {
                             .zip(dac_samples[channel].iter_mut())
                             .zip(&mut signal_generator[channel])
                             .map(|((ai, di), signal)| {
-                                let x = f32::from(*ai as u16);
+                                let x = f32::from((*ai as i16) - 10000);
                                 let y = settings.iir_ch[channel]
                                     .iter()
                                     .zip(iir_state[channel].iter_mut())
