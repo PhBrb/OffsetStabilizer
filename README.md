@@ -16,6 +16,8 @@ One laser was free running, the other lasers wavelength modulation input was con
 
 The reference frequency was jumped from 10 MHz to 8.9 MHz. This jumps the target beat frequency from 600 MHz to 543 MHz. In a frequency doubled Rb87 setup this roughly corresponds to MOT / Grey Molasses frequencies.
 
+<img src="./media/LaserJump.png" alt="" width="500"/>
+
 With this setup the laser frequency step response reached 99.6% of the target frequency within 1ms. This corresponds to < 4.5 MHz difference after SHG.
 
 # Limitations
