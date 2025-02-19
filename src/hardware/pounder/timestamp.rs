@@ -11,16 +11,16 @@ pub struct InputCaptureTimer {
 
 impl InputCaptureTimer {
     pub fn new(
-        mut reference_timer: timers::BeatTimer,
+        mut beat_timer: timers::BeatTimer,
         capture_channel: timers::tim8::Channel1,
-        beat_timer: &mut timers::ReferenceTimer,
+        reference_timer: &mut timers::ReferenceTimer,
         _clock_input: hal::gpio::gpioa::PA0<hal::gpio::Alternate<3>>,
     ) -> Self {
         // Trigger source should trigger on its overflow
-        beat_timer.generate_trigger(timers::TriggerGenerator::Update);
+        reference_timer.generate_trigger(timers::TriggerGenerator::Update);
 
         // TIM1&8 are connected by ITR0
-        reference_timer.set_trigger_source(timers::TriggerSource::Trigger0);
+        beat_timer.set_trigger_source(timers::TriggerSource::Trigger0);
 
         // The capture channel should capture whenever the trigger input occurs.
         let mut input_capture = capture_channel
@@ -30,7 +30,7 @@ impl InputCaptureTimer {
         input_capture.configure_prescaler(timers::Prescaler::Div1);
 
         Self {
-            timer: reference_timer,
+            timer: beat_timer,
             capture_channel: input_capture,
             previous_capture: 0,
             previous_diff: 0,
