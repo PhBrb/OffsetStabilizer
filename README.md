@@ -1,4 +1,4 @@
-Firmware for laser offset stabilization using [![Stabilizer](https://github.com/sinara-hw/Stabilizer)]
+Firmware for laser offset stabilization using [Stabilizer](https://github.com/sinara-hw/Stabilizer)
 
 Forked from https://github.com/quartiq/stabilizer
 
