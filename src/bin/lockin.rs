@@ -48,7 +48,6 @@ use stabilizer::{
         afe::Gain,
         dac::{Dac0Output, Dac1Output, DacCode},
         hal,
-        input_stamper::InputStamper,
         signal_generator,
         timers::SamplingTimer,
         DigitalInput0, DigitalInput1, SerialTerminal, SystemTimer, Systick,
@@ -61,6 +60,7 @@ use stabilizer::{
         NetworkState, NetworkUsers,
     },
     settings::NetSettings,
+    hardware::timers::TimestampTimer,
 };
 
 // The logarithm of the number of samples in each batch process. This corresponds with 2^3 samples
@@ -259,7 +259,7 @@ mod app {
         usb_terminal: SerialTerminal<Settings, 3>,
         sampling_timer: SamplingTimer,
         digital_inputs: (DigitalInput0, DigitalInput1),
-        timestamper: InputStamper,
+        timestamper: TimestampTimer,
         afes: (AFE0, AFE1),
         adcs: (Adc0Input, Adc1Input),
         dacs: (Dac0Output, Dac1Output),
@@ -275,7 +275,7 @@ mod app {
         let clock = SystemTimer::new(|| Systick::now().ticks());
 
         // Configure the microcontroller
-        let (mut stabilizer, _pounder) = hardware::setup::setup::<Settings, 3>(
+        let (stabilizer, _pounder) = hardware::setup::setup::<Settings, 3>(
             c.core,
             c.device,
             clock,
@@ -342,7 +342,7 @@ mod app {
         usb::spawn().unwrap();
 
         // Start recording digital input timestamps.
-        stabilizer.timestamp_timer.start();
+        // stabilizer.timestamp_timer.start();
 
         // Enable the timestamper.
         local.timestamper.start();
@@ -388,14 +388,16 @@ mod app {
             let (reference_phase, reference_frequency) =
                 match *settings.lockin_mode {
                     LockinMode::External => {
-                        let timestamp =
-                            timestamper.latest_timestamp().unwrap_or(None); // Ignore data from timer capture overflows.
-                        let (pll_phase, pll_frequency) = pll.update(
+                        // XXX
+                        /*let timestamp =
+                            timestamper.latest_capture().unwrap_or(None); // Ignore data from timer capture overflows.*/
+                        /*let (pll_phase, pll_frequency) = pll.update(
                             timestamp.map(|t| t as i32),
                             *settings.pll_tc[0],
                             *settings.pll_tc[1],
-                        );
-                        (pll_phase, (pll_frequency >> BATCH_SIZE_LOG2) as i32)
+                        );*/
+                        /*(pll_phase, (pll_frequency >> BATCH_SIZE_LOG2) as i32)*/
+                        (0i32, 0i32)
                     }
                     LockinMode::Internal => {
                         // Reference phase and frequency are known.
