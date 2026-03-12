@@ -44,8 +44,8 @@ impl Default for BasicConfig {
     fn default() -> Self {
         Self {
             frequency: 1.0e3.into(),
-            symmetry: 0.5.into(),
-            signal: Signal::Cosine.into(),
+            symmetry: 1.0.into(),
+            signal: Signal::Square.into(),
             amplitude: 0.0.into(),
             phase: 0.0.into(),
         }

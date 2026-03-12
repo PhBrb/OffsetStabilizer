@@ -456,7 +456,20 @@ mod app {
         loop {
             let mut a: [u8; 16] = [0; 16];
             if let Ok(gelesen) = kl.read(&mut a) {
-                log::info!("Kasli-SPI: {} bytes gelesen: {} {} {} {}", gelesen, a[0], a[1], a[2], a[3]);
+                let amplitude = (f32::from(a[3]) / f32::from(u8::MAX)) * DacCode::FULL_SCALE;
+                let amplitude_changed = c.shared.settings.lock(|settings| {
+                    let current = *settings.dual_iir.source[0].amplitude;
+                    if (current - amplitude).abs() > f32::EPSILON {
+                        settings.dual_iir.source[0].amplitude = amplitude.into();
+                        true
+                    } else {
+                        false
+                    }
+                });
+
+                if amplitude_changed {
+                    settings_update::spawn().unwrap();
+                }
             }
             match (&mut c.shared.network, &mut c.shared.settings)
                 .lock(|net, settings| net.update(&mut settings.dual_iir))
