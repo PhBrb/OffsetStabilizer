@@ -47,6 +47,7 @@ use stabilizer::{
         afe::Gain,
         dac::{Dac0Output, Dac1Output, DacCode},
         hal,
+        kasli_link::{KasliLink, KasliLinkBdmaHandler, KasliLinkNssHandler},
         signal_generator::{self, SignalGenerator},
         timers::SamplingTimer,
         DigitalInput0, DigitalInput1, SerialTerminal, SystemTimer, Systick,
@@ -230,6 +231,9 @@ mod app {
         iir_state: [[[f32; 4]; IIR_CASCADE_LENGTH]; 2],
         generator: FrameGenerator,
         cpu_temp_sensor: stabilizer::hardware::cpu_temp_sensor::CpuTempSensor,
+        kasli_link: KasliLink,
+        kasli_bdma: Option<KasliLinkBdmaHandler>,
+        kasli_nss: Option<KasliLinkNssHandler>,
     }
 
     #[init]
@@ -237,7 +241,7 @@ mod app {
         let clock = SystemTimer::new(|| Systick::now().ticks());
 
         // Configure the microcontroller
-        let (mut stabilizer, beat_timer) = hardware::setup::setup::<Settings, 4>(
+        let (mut stabilizer, beat_timer, kasli_bdma, kasli_nss) = hardware::setup::setup::<Settings, 4>(
             c.core,
             c.device,
             clock,
@@ -287,6 +291,9 @@ mod app {
             iir_state: [[[0.; 4]; IIR_CASCADE_LENGTH]; 2],
             generator,
             cpu_temp_sensor: stabilizer.temperature_sensor,
+            kasli_link: stabilizer.kasli_link,
+            kasli_bdma: Some(kasli_bdma),
+            kasli_nss: Some(kasli_nss),
         };
 
         // Enable ADC/DAC events
@@ -443,9 +450,14 @@ mod app {
         );
     }
 
-    #[idle(shared=[network, settings, usb])]
+    #[idle(shared=[network, settings, usb], local=[kasli_link])]
     fn idle(mut c: idle::Context) -> ! {
+        let kl = c.local.kasli_link;
         loop {
+            let mut a: [u8; 16] = [0; 16];
+            if let Ok(gelesen) = kl.read(&mut a) {
+                log::info!("Kasli-SPI: {} bytes gelesen: {} {} {} {}", gelesen, a[0], a[1], a[2], a[3]);
+            }
             match (&mut c.shared.network, &mut c.shared.settings)
                 .lock(|net, settings| net.update(&mut settings.dual_iir))
             {
@@ -575,5 +587,19 @@ mod app {
     #[task(binds = SPI5, priority = 4)]
     fn spi5(_: spi5::Context) {
         panic!("DAC1 SPI error");
+    }
+
+    #[task(binds = BDMA_CH1, local=[kasli_bdma], priority = 2)]
+    fn bdma_ch0(cx: bdma_ch0::Context) {
+        if let Some(handle) = cx.local.kasli_bdma {
+            handle.handle_bdma();
+        }
+    }
+
+    #[task(binds = EXTI9_5, priority = 1, local=[kasli_nss])]
+    fn nss_exti(ctx: nss_exti::Context) {
+        if let Some(handle) = ctx.local.kasli_nss {
+            handle.handle_nss();
+        }
     }
 }
