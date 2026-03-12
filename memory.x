@@ -38,6 +38,10 @@ SECTIONS {
     *(.sram3 .sram3.*);
     . = ALIGN(4);
     } > SRAM3
+  .sram4 (NOLOAD) : ALIGN(4) {
+    *(.sram4 .sram4.*);
+    . = ALIGN(4);
+  } > BACKUPSRAM
   .itcm : ALIGN(8) {
     . = ALIGN(8);
     __sitcm = .;

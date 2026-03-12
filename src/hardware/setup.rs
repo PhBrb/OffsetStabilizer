@@ -23,8 +23,9 @@ use crate::settings::{AppSettings, NetSettings};
 use super::{
     adc, afe, cpu_temp_sensor::CpuTempSensor, dac, delay, design_parameters,
     eeprom, metadata::ApplicationMetadata,
+    kasli_link::{KasliLink, KasliLinkBdmaHandler, KasliLinkNssHandler},
     platform, pounder, pounder::dds_output::DdsOutput, shared_adc::SharedAdc,
-    timers, DigitalInput0, DigitalInput1, Eem, EthernetPhy, Gpio,
+    timers, DigitalInput0, DigitalInput1, EthernetPhy, Gpio,
     HardwareVersion, NetworkStack, SerialTerminal, SystemTimer, Systick,
     UsbDevice, AFE0, AFE1,
 };
@@ -117,7 +118,8 @@ pub struct StabilizerDevices<
     pub adc_dac_timer: timers::SamplingTimer,
     pub net: NetworkDevices,
     pub digital_inputs: (DigitalInput0, DigitalInput1),
-    pub eem: Eem,
+    // pub eem: Eem,
+    pub kasli_link: KasliLink,
     pub usb_serial: SerialTerminal<C, Y>,
     pub usb: UsbDevice,
     pub metadata: &'static ApplicationMetadata,
@@ -210,7 +212,10 @@ pub fn setup<C, const Y: usize>(
     clock: SystemTimer,
     batch_size: usize,
     sample_ticks: u32,
-) -> (StabilizerDevices<C, Y>, crate::hardware::pounder::timestamp::InputCaptureTimer)
+) -> (StabilizerDevices<C, Y>,
+      crate::hardware::pounder::timestamp::InputCaptureTimer,
+      KasliLinkBdmaHandler,
+      KasliLinkNssHandler)
 where
     C: serial_settings::Settings + AppSettings,
 {
@@ -897,7 +902,7 @@ where
         (pin.into_analog(), is_floating)
     }
 
-    let mut lvds0 = gpiog.pg13;
+    /*let mut lvds0 = gpiog.pg13;
     let mut lvds1 = gpiob.pb5;
     let mut lvds3 = gpiog.pg8;
     let mut is_floating = true;
@@ -961,7 +966,22 @@ where
                 Eem::None
             }
         }
-    };
+    };*/
+
+    let kasli_nss_pin = gpiog.pg8.into_alternate::<5>();
+    let kasli_sck_pin = gpiog.pg13.into_alternate::<5>();
+    let kasli_mosi_pin = gpiob.pb5.into_alternate::<8>();
+
+    let (kasli_link, kasli_bdma, kasli_nss) = KasliLink::start(
+        kasli_mosi_pin,
+        kasli_nss_pin,
+        kasli_sck_pin,
+        ccdr.peripheral.SPI6,
+        device.SPI6,
+        ccdr.peripheral.BDMA,
+        device.BDMA,
+        &ccdr.clocks,
+    );
 
     let (usb_device, usb_serial) = {
         let _usb_id = gpioa.pa10.into_alternate::<10>();
@@ -1055,7 +1075,8 @@ where
         net: network_devices,
         adc_dac_timer: sampling_timer,
         digital_inputs,
-        eem,
+        // eem,
+        kasli_link,
         usb: usb_device,
         metadata,
         settings,
@@ -1066,5 +1087,5 @@ where
     // info!("{} {}", build_info::RUSTC_VERSION, build_info::TARGET);
     log::info!("setup() complete");
 
-    (stabilizer, beat_timer)
+    (stabilizer, beat_timer, kasli_bdma, kasli_nss)
 }
