@@ -189,11 +189,10 @@ impl KasliInterfaceStateText {
                         false,
                     );
                 };
-                let flavor = postcard::de_flavors::Slice::new(value.as_bytes());
-                if let Err(e) = miniconf::postcard::set_by_key(
+                if let Err(e) = miniconf::json::set_by_key(
                     settings,
                     path.split('/').filter(|s| !s.is_empty()),
-                    flavor,
+                    value.as_bytes(),
                 ) {
                     log::error!("KasliInterface: failed to update config, error: {}, string: {}", e, self.str);
                     return (
