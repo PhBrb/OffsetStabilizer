@@ -217,8 +217,38 @@ impl KasliInterfaceStateText {
             *idx += 1;
         }
 
-        let s = core::str::from_utf8(&msg[start..msg.len()]).unwrap();
-        self.str.push_str(s).unwrap();
+        let s = match core::str::from_utf8(&msg[start..msg.len()]) {
+            Ok(x) => x,
+            Err(e) => {
+                log::error!(
+                    "KasliInterface: failed to verify utf-8 string, error: {}",
+                    e
+                );
+                return (
+                    KasliInterfaceStateMachine::SearchingForPreamble(
+                        KasliInterfaceStatePreamble::new(),
+                    ),
+                    false,
+                );
+            }
+        };
+
+        let s = match self.str.push_str(s) {
+            Ok(x) => x,
+            Err(e) => {
+                log::error!(
+                    "KasliInterface: failed to fit message into {} bytes",
+                    STR_SIZE
+                );
+
+                return (
+                    KasliInterfaceStateMachine::SearchingForPreamble(
+                        KasliInterfaceStatePreamble::new(),
+                    ),
+                    false,
+                );
+            }
+        };
 
         (KasliInterfaceStateMachine::CollectingText(self), false)
     }
