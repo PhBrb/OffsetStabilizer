@@ -47,6 +47,7 @@ use stabilizer::{
         afe::Gain,
         dac::{Dac0Output, Dac1Output, DacCode},
         hal,
+        kasli_interface::KasliInterface,
         kasli_link::{KasliLink, KasliLinkBdmaHandler, KasliLinkNssHandler},
         signal_generator::{self, SignalGenerator},
         timers::SamplingTimer,
@@ -241,13 +242,14 @@ mod app {
         let clock = SystemTimer::new(|| Systick::now().ticks());
 
         // Configure the microcontroller
-        let (mut stabilizer, beat_timer, kasli_bdma, kasli_nss) = hardware::setup::setup::<Settings, 4>(
-            c.core,
-            c.device,
-            clock,
-            BATCH_SIZE,
-            SAMPLE_TICKS,
-        );
+        let (mut stabilizer, beat_timer, kasli_bdma, kasli_nss) =
+            hardware::setup::setup::<Settings, 4>(
+                c.core,
+                c.device,
+                clock,
+                BATCH_SIZE,
+                SAMPLE_TICKS,
+            );
 
         let mut network = NetworkUsers::new(
             stabilizer.net.stack,
@@ -378,7 +380,7 @@ mod app {
                     // Set all values in adc_samples to new_value
                     for channel in 0..adc_samples.len() {
                         for sample in adc_samples[channel].iter_mut() {
-                            *sample = timestamp_diff*2;
+                            *sample = timestamp_diff * 2;
                         }
                     }
 
@@ -453,11 +455,18 @@ mod app {
     #[idle(shared=[network, settings, usb], local=[kasli_link])]
     fn idle(mut c: idle::Context) -> ! {
         let kl = c.local.kasli_link;
+        let mut ki = KasliInterface::new();
         loop {
-            let mut a: [u8; 16] = [0; 16];
-            if let Ok(gelesen) = kl.read(&mut a) {
-                log::info!("Kasli-SPI: {} bytes gelesen: {} {} {} {}", gelesen, a[0], a[1], a[2], a[3]);
+            let mut a: [u8; 4] = [0; 4];
+            if let Ok(_gelesen) = kl.read(&mut a) {
+                let mut do_update = false;
+                (&mut c.shared.settings)
+                    .lock(|settings| do_update = ki.update(&a, settings));
+                if do_update == true {
+                    settings_update::spawn().unwrap();
+                }
             }
+
             match (&mut c.shared.network, &mut c.shared.settings)
                 .lock(|net, settings| net.update(&mut settings.dual_iir))
             {
