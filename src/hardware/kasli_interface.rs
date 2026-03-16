@@ -165,8 +165,30 @@ impl KasliInterfaceStateText {
                 }
 
                 let mut parts = self.str.splitn(2, ' ');
-                let path = parts.next().unwrap();
-                let value = parts.next().unwrap();
+                let Some(path) = parts.next() else {
+                    log::error!(
+                        "KasliInterface: failed to split string: {}",
+                        self.str
+                    );
+                    return (
+                        KasliInterfaceStateMachine::SearchingForPreamble(
+                            KasliInterfaceStatePreamble::new(),
+                        ),
+                        false,
+                    );
+                };
+                let Some(value) = parts.next() else {
+                    log::error!(
+                        "KasliInterface: failed to split string: {}",
+                        self.str
+                    );
+                    return (
+                        KasliInterfaceStateMachine::SearchingForPreamble(
+                            KasliInterfaceStatePreamble::new(),
+                        ),
+                        false,
+                    );
+                };
                 let flavor = postcard::de_flavors::Slice::new(value.as_bytes());
                 if let Err(e) = miniconf::postcard::set_by_key(
                     settings,
