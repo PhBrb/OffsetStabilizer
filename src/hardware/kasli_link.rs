@@ -27,7 +27,8 @@ struct TransactionBorders {
     end_byte: u8,
 }
 
-static mut TXN_QUEUE: Queue<TransactionBorders, CHUNK_QUEUE_SIZE> = Queue::new();
+static mut TXN_QUEUE: Queue<TransactionBorders, CHUNK_QUEUE_SIZE> =
+    Queue::new();
 
 #[link_section = ".sram4"]
 pub static mut BDMA_BUF0: [u8; CHUNK_SIZE] = [0; CHUNK_SIZE];
@@ -247,7 +248,7 @@ impl KasliLink {
         });
 
         spi6.cfg1
-            .modify(|_, w| w.dsize().bits(7).rxdmaen().set_bit() );
+            .modify(|_, w| w.dsize().bits(7).rxdmaen().set_bit());
         spi6.cr1.modify(|_, w| w.spe().enabled());
 
         let (prod_chunks, cons_chunks) = unsafe { CHUNK_QUEUE.split() };

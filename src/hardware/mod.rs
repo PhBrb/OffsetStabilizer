@@ -12,6 +12,7 @@ pub mod design_parameters;
 pub mod eem;
 mod eeprom;
 pub mod flash;
+pub mod kasli_interface;
 pub mod kasli_link;
 pub mod metadata;
 pub mod platform;
