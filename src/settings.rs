@@ -61,7 +61,7 @@ impl NetSettings {
         write!(&mut id, "{mac}").unwrap();
 
         Self {
-            broker: String::try_from("mqtt").unwrap().into(),
+            broker: String::try_from("192.168.1.60").unwrap().into(),
             ip: String::try_from("0.0.0.0").unwrap().into(),
             id: id.into(),
             mac,
