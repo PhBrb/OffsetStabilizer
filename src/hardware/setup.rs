@@ -391,7 +391,8 @@ where
     let shadow_sampling_timer_channels = shadow_sampling_timer.channels();
 
     let mut ref_timer = {
-        let _etr_pin = gpioe.pe7.into_alternate::<1>(); //see alternate function table
+        // let _etr_pin = gpioe.pe7.into_alternate::<1>(); //see alternate function table
+
         // The timer frequency is manually adjusted below, so the 1KHz setting here is a
         // dont-care.
         let mut timer1 =
@@ -399,10 +400,11 @@ where
                 .TIM1
                 .timer(1.kHz(), ccdr.peripheral.TIM1, &ccdr.clocks);
         timer1.pause();
+        timer1.set_tick_freq(crate::hardware::hal::time::MegaHertz::MHz(10).convert());
 
         let mut ref_timer1 = timers::ReferenceTimer::new(timer1);
 
-        ref_timer1.set_external_clock(timers::Prescaler::Div1);
+        // ref_timer1.set_external_clock(timers::Prescaler::Div1);
 
         ref_timer1.set_period_ticks(1000-1);
 
