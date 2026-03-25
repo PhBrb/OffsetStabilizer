@@ -1,4 +1,5 @@
 //! 
+use core::u16;
 use crate::hardware::timers;
 use stm32h7xx_hal as hal;
 
@@ -51,12 +52,14 @@ impl InputCaptureTimer {
     pub fn latest_timestamp_diff(&mut self) -> u16 {
         let diff =  match self.capture_channel.latest_capture() {
             Ok(Some(value)) => {
-                let tmp = value - self.previous_capture; //this assumes that we are never missing a capture
+                let tmp = value.wrapping_sub(self.previous_capture);
+
                 self.previous_capture = value;
+
                 tmp
             },
             Ok(None) => self.previous_diff,
-            Err(Some(_value)) => 1, //1 for testing if this ever happens
+            Err(Some(_value)) => self.previous_diff,
             Err(None) => self.previous_diff, 
         };
         self.previous_diff = diff;
