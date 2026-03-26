@@ -1,5 +1,5 @@
 use crate::net::miniconf::{TreeDeserialize, TreeKey, TreeSerialize};
-use heapless::String;
+use heapless::Vec;
 
 const STR_SIZE: usize = 128;
 
@@ -60,7 +60,7 @@ impl KasliInterface {
             let (new_state, do_update) =
                 state.progress(msg, &mut processed, settings);
             state = new_state.unwrap();
-            update = do_update;
+            update |= do_update;
             if processed >= msg.len() {
                 break;
             }
@@ -104,7 +104,7 @@ impl KasliInterfaceStatePreamble {
                     KasliInterfaceStateMachine::CollectingText(
                         KasliInterfaceStateText::new(),
                     ),
-                    true,
+                    false,
                 );
             }
         }
@@ -117,12 +117,16 @@ impl KasliInterfaceStatePreamble {
 }
 
 struct KasliInterfaceStateText {
-    str: String<STR_SIZE>,
+    bytes: Vec<u8, STR_SIZE>,
+    preamble_signs_collected: usize,
 }
 
 impl KasliInterfaceStateText {
     fn new() -> Self {
-        Self { str: String::new() }
+        Self {
+            bytes: Vec::new(),
+            preamble_signs_collected: 0,
+        }
     }
 
     fn progress<C>(
@@ -135,11 +139,32 @@ impl KasliInterfaceStateText {
         C: TreeKey + TreeSerialize,
         for<'de> C: TreeDeserialize<'de>,
     {
-        let start = *idx;
-
         while *idx < msg.len() {
-            if msg[*idx] == b'\n' {
-                let s = match core::str::from_utf8(&msg[start..*idx]) {
+            let b = msg[*idx];
+
+            if b == KasliInterfaceStatePreamble::PREAMBLE_SIGN {
+                self.preamble_signs_collected += 1;
+                *idx += 1;
+
+                if self.preamble_signs_collected
+                    == KasliInterfaceStatePreamble::PREAMBLE_LEN
+                {
+                    // Preamble inside text indicates we lost synchronization.
+                    // Restart collection from the new preamble.
+                    return (
+                        KasliInterfaceStateMachine::CollectingText(
+                            KasliInterfaceStateText::new(),
+                        ),
+                        false,
+                    );
+                }
+
+                continue;
+            }
+            self.preamble_signs_collected = 0;
+
+            if b == b'\n' {
+                let msg_str = match core::str::from_utf8(self.bytes.as_slice()) {
                     Ok(s) => s,
                     Err(e) => {
                         log::error!("KasliInterface: failed to verify utf-8 string, error: {}", e);
@@ -151,24 +176,12 @@ impl KasliInterfaceStateText {
                         );
                     }
                 };
-                if let Err(_e) = self.str.push_str(s) {
-                    log::error!(
-                        "KasliInterface: failed to fit message into {} bytes",
-                        STR_SIZE
-                    );
-                    return (
-                        KasliInterfaceStateMachine::SearchingForPreamble(
-                            KasliInterfaceStatePreamble::new(),
-                        ),
-                        false,
-                    );
-                }
 
-                let mut parts = self.str.splitn(2, ' ');
+                let mut parts = msg_str.splitn(2, ' ');
                 let Some(path) = parts.next() else {
                     log::error!(
                         "KasliInterface: failed to split string: {}",
-                        self.str
+                        msg_str
                     );
                     return (
                         KasliInterfaceStateMachine::SearchingForPreamble(
@@ -180,7 +193,7 @@ impl KasliInterfaceStateText {
                 let Some(value) = parts.next() else {
                     log::error!(
                         "KasliInterface: failed to split string: {}",
-                        self.str
+                        msg_str
                     );
                     return (
                         KasliInterfaceStateMachine::SearchingForPreamble(
@@ -192,9 +205,9 @@ impl KasliInterfaceStateText {
                 if let Err(e) = miniconf::json::set_by_key(
                     settings,
                     path.split('/').filter(|s| !s.is_empty()),
-                    value.as_bytes(),
+                    value.trim_end_matches('\r').as_bytes(),
                 ) {
-                    log::error!("KasliInterface: failed to update config, error: {}, string: {}", e, self.str);
+                    log::error!("KasliInterface: failed to update config, error: {}, string: {}", e, msg_str);
                     return (
                         KasliInterfaceStateMachine::SearchingForPreamble(
                             KasliInterfaceStatePreamble::new(),
@@ -213,28 +226,7 @@ impl KasliInterfaceStateText {
                 );
             }
 
-            *idx += 1;
-        }
-
-        let s = match core::str::from_utf8(&msg[start..msg.len()]) {
-            Ok(x) => x,
-            Err(e) => {
-                log::error!(
-                    "KasliInterface: failed to verify utf-8 string, error: {}",
-                    e
-                );
-                return (
-                    KasliInterfaceStateMachine::SearchingForPreamble(
-                        KasliInterfaceStatePreamble::new(),
-                    ),
-                    false,
-                );
-            }
-        };
-
-        let s = match self.str.push_str(s) {
-            Ok(x) => x,
-            Err(e) => {
+            if let Err(_e) = self.bytes.push(b) {
                 log::error!(
                     "KasliInterface: failed to fit message into {} bytes",
                     STR_SIZE
@@ -247,7 +239,9 @@ impl KasliInterfaceStateText {
                     false,
                 );
             }
-        };
+
+            *idx += 1;
+        }
 
         (KasliInterfaceStateMachine::CollectingText(self), false)
     }

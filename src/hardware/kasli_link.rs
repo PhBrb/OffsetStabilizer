@@ -68,10 +68,22 @@ fn get_current_chunk() -> &'static mut [u8; CHUNK_SIZE] {
 }
 
 impl TransactionBorders {
-    fn size(&self) -> usize {
-        CHUNK_SIZE * (self.end_chunk - self.start_chunk) as usize
-            + self.end_byte as usize
-            - self.start_byte as usize
+    fn size(&self) -> Option<usize> {
+        let start_byte = self.start_byte as usize;
+        let end_byte = self.end_byte as usize;
+
+        if start_byte >= CHUNK_SIZE || end_byte == 0 || end_byte > CHUNK_SIZE {
+            return None;
+        }
+
+        let start_abs = (self.start_chunk as usize)
+            .checked_mul(CHUNK_SIZE)?
+            .checked_add(start_byte)?;
+        let end_abs = (self.end_chunk as usize)
+            .checked_mul(CHUNK_SIZE)?
+            .checked_add(end_byte)?;
+
+        end_abs.checked_sub(start_abs)
     }
 }
 
@@ -186,11 +198,37 @@ impl KasliLinkNssHandler {
             CHUNK_SIZE - bdma.ch[0].ndtr.read().ndt().bits() as usize;
         let end_chunk = unsafe { CUR_CHUNK_ID.load(Ordering::Relaxed) };
 
+        if end_byte > CHUNK_SIZE {
+            return;
+        }
+
+        if end_chunk == self.last_chunk && end_byte as u8 == self.last_byte {
+            return;
+        }
+
         let (end_txn_byte, end_txn_chunk) = if end_byte == 0 {
+            if end_chunk == 0 {
+                return;
+            }
             (CHUNK_SIZE as u8, end_chunk - 1)
         } else {
             (end_byte as u8, end_chunk)
         };
+
+        if end_txn_chunk < self.last_chunk
+            || (end_txn_chunk == self.last_chunk
+                && end_txn_byte < self.last_byte)
+        {
+            self.last_chunk = end_chunk;
+            self.last_byte = end_byte as u8;
+            return;
+        }
+
+        if end_txn_chunk == self.last_chunk && end_txn_byte == self.last_byte {
+            self.last_chunk = end_chunk;
+            self.last_byte = end_byte as u8;
+            return;
+        }
 
         let txn = TransactionBorders {
             start_chunk: self.last_chunk,
@@ -280,7 +318,8 @@ impl KasliLink {
             .txn_queue
             .dequeue()
             .ok_or(KasliLinkError::NoMsgAvailable)?;
-        if txn.size() > N {
+        let txn_size = txn.size().ok_or(KasliLinkError::DesyncTxn)?;
+        if txn_size > N {
             return Err(KasliLinkError::BufferTooSmall);
         }
 
@@ -307,7 +346,13 @@ impl KasliLink {
         loop {
             if txn.end_chunk == chunk_id {
                 let end_byte = txn.end_byte as usize;
+                if end_byte > CHUNK_SIZE || end_byte < start_byte {
+                    return Err(KasliLinkError::DesyncTxn);
+                }
                 let portion_size = end_byte - start_byte;
+                if bytes_written + portion_size > N {
+                    return Err(KasliLinkError::BufferTooSmall);
+                }
 
                 buf[bytes_written..bytes_written + portion_size]
                     .copy_from_slice(&chunk[start_byte..end_byte]);
@@ -316,7 +361,13 @@ impl KasliLink {
 
                 break;
             } else {
+                if start_byte >= CHUNK_SIZE {
+                    return Err(KasliLinkError::DesyncTxn);
+                }
                 let portion_size = CHUNK_SIZE - start_byte;
+                if bytes_written + portion_size > N {
+                    return Err(KasliLinkError::BufferTooSmall);
+                }
 
                 buf[bytes_written..bytes_written + portion_size]
                     .copy_from_slice(&chunk[start_byte..CHUNK_SIZE]);

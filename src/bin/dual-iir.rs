@@ -460,31 +460,34 @@ mod app {
         let kl = c.local.kasli_link;
         let mut ki = KasliInterface::new();
         loop {
-            let mut a: [u8; 4] = [0; 4];
-            if let Ok(_gelesen) = kl.read(&mut a) {
-                let mut do_update = false;
-                (&mut c.shared.settings)
-                    .lock(|settings| do_update = ki.update(&a, settings));
-                if do_update == true {
-                    settings_update::spawn().unwrap();
-                }
-            }
+            let mut do_update = false;
 
+            // Process network first. SPI is handled afterwards so it wins in case
+            // both sources update settings in the same loop iteration.
             match (&mut c.shared.network, &mut c.shared.settings)
                 .lock(|net, settings| net.update(&mut settings.dual_iir))
             {
                 NetworkState::SettingsChanged => {
-                    settings_update::spawn().unwrap()
+                    do_update = true;
                 }
                 NetworkState::Updated => {}
-                NetworkState::NoChange => {
-                    // We can't sleep if USB is not in suspend.
-                    if c.shared.usb.lock(|usb| {
-                        usb.state()
-                            == usb_device::device::UsbDeviceState::Suspend
-                    }) {
-                        cortex_m::asm::wfi();
-                    }
+                NetworkState::NoChange => {}
+            }
+
+            let mut a: [u8; 32] = [0; 32];
+            if let Ok(gelesen) = kl.read(&mut a) {
+                (&mut c.shared.settings)
+                    .lock(|settings| do_update |= ki.update(&a[..gelesen], settings));
+            }
+
+            if do_update {
+                settings_update::spawn().unwrap();
+            } else {
+                // We can't sleep if USB is not in suspend.
+                if c.shared.usb.lock(|usb| {
+                    usb.state() == usb_device::device::UsbDeviceState::Suspend
+                }) {
+                    cortex_m::asm::wfi();
                 }
             }
         }
