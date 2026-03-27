@@ -462,8 +462,27 @@ mod app {
         loop {
             let mut do_update = false;
 
-            // Process network first. SPI is handled afterwards so it wins in case
-            // both sources update settings in the same loop iteration.
+            loop {
+                let mut a: [u8; 32] = [0; 32];
+                let Ok(gelesen) = kl.read(&mut a) else {
+                    break;
+                };
+                (&mut c.shared.settings).lock(|settings| {
+                    do_update |= ki.update(&a[..gelesen], settings)
+                });
+            }
+
+            // Prioritize locally received SPI updates. Defer network processing to the next loop iteration
+            if do_update {
+                settings_update::spawn().unwrap();
+                continue;
+            }
+
+            // Skip network processing while an SPI message is in progress to reduce timing jitter of SPI message execution
+            if ki.message_pending() {
+                continue;
+            }
+
             match (&mut c.shared.network, &mut c.shared.settings)
                 .lock(|net, settings| net.update(&mut settings.dual_iir))
             {
@@ -472,12 +491,6 @@ mod app {
                 }
                 NetworkState::Updated => {}
                 NetworkState::NoChange => {}
-            }
-
-            let mut a: [u8; 32] = [0; 32];
-            if let Ok(gelesen) = kl.read(&mut a) {
-                (&mut c.shared.settings)
-                    .lock(|settings| do_update |= ki.update(&a[..gelesen], settings));
             }
 
             if do_update {

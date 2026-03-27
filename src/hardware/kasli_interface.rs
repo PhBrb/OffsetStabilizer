@@ -47,6 +47,13 @@ impl KasliInterface {
         }
     }
 
+    pub fn message_pending(&self) -> bool {
+        matches!(
+            self.state,
+            Some(KasliInterfaceStateMachine::CollectingText(_))
+        )
+    }
+
     pub fn update<C>(&mut self, msg: &[u8], settings: &mut C) -> bool
     where
         C: TreeKey + TreeSerialize,
