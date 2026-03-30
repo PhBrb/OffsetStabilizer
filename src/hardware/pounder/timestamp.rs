@@ -21,18 +21,13 @@ impl InputCaptureTimer {
     pub fn new(
         mut beat_timer: timers::BeatTimer,
         capture_channel: timers::tim8::Channel1,
-        reference_timer: &mut timers::ReferenceTimer,
     ) -> Self {
-        // Trigger source should trigger on its overflow
-        reference_timer.generate_trigger(timers::TriggerGenerator::Update);
-
-        // TIM5&8 are connected by ITR3
-        beat_timer.set_trigger_source(timers::TriggerSource::Trigger3); //TODO could also be set to ITR2 if tim4 can trigger 2 ITRs
+        // TIM4&8 are connected by ITR2
+        beat_timer.set_trigger_source(timers::TriggerSource::Trigger2);
 
         // The capture channel should capture whenever the trigger input occurs.
         let mut input_capture = capture_channel
             .into_input_capture(timers::tim8::CaptureSource1::Trc);
-
 
         input_capture.configure_prescaler(timers::Prescaler::Div1);
 

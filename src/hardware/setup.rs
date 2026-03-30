@@ -114,7 +114,6 @@ pub struct StabilizerDevices<
     pub afes: (AFE0, AFE1),
     pub adcs: (adc::Adc0Input, adc::Adc1Input),
     pub dacs: (dac::Dac0Output, dac::Dac1Output),
-    pub timestamper: crate::hardware::timers::ReferenceTimer,
     pub timestamper2: crate::hardware::timers::ReferenceTimer2,
     pub adc_dac_timer: timers::SamplingTimer,
     pub net: NetworkDevices,
@@ -391,27 +390,6 @@ where
 
     let sampling_timer_channels = sampling_timer.channels();
     let shadow_sampling_timer_channels = shadow_sampling_timer.channels();
-
-    let mut ref_timer1_5 = {
-        // let _etr_pin = gpioe.pe7.into_alternate::<1>(); //see alternate function table
-
-        // The timer frequency is manually adjusted below, so the 1KHz setting here is a
-        // dont-care.
-        let mut timer5 =
-            device
-                .TIM5
-                .timer(1.kHz(), ccdr.peripheral.TIM5, &ccdr.clocks);
-        timer5.pause();
-        timer5.set_tick_freq(crate::hardware::hal::time::MegaHertz::MHz(10).convert());
-
-        let mut ref_timer1 = timers::ReferenceTimer::new(timer5);
-
-        // ref_timer1.set_external_clock(timers::Prescaler::Div1);
-
-        ref_timer1.set_period_ticks(1000-1);
-
-        ref_timer1
-    };
 
     let mut ref_timer2_4 = {
         // let _etr_pin = gpioe.pe7.into_alternate::<1>(); //see alternate function table
@@ -886,7 +864,6 @@ where
         pounder::timestamp::InputCaptureTimer::new(
             beat_timer8,
             beat_timer8_channels.ch1,
-            &mut ref_timer1_5,
         )
     };
 
@@ -1118,7 +1095,6 @@ where
             adc3.create_channel(hal::adc::Temperature::new()),
         ),
         usb_serial: usb_terminal,
-        timestamper: ref_timer1_5,
         timestamper2: ref_timer2_4,
         net: network_devices,
         adc_dac_timer: sampling_timer,
