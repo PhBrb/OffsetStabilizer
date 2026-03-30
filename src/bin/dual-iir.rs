@@ -310,6 +310,7 @@ mod app {
         local.dacs.1.start();
 
         stabilizer.timestamper.start();
+        stabilizer.timestamper2.start();
         local.beat_timer.start();
         local.beat_timer2.start();
 
