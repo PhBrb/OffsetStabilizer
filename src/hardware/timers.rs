@@ -7,7 +7,8 @@ use hal::stm32::{
     tim1 as __tim1,
     tim1 as __tim8,
     tim2 as __tim2,
-    // TIM2 and TIM5 have identical registers.
+    tim2 as __tim5,    // TIM2 and TIM5 have identical registers.
+    tim4 as __tim4,
     tim3 as __tim3,
 };
 
@@ -236,7 +237,7 @@ macro_rules! timer_channels {
         }
     };
 
-    ($index:expr, $TY:ty, $ccmrx:expr, $size:ty) => {
+    ($index:expr, $TY:ident, $ccmrx:expr, $size:ty) => {
         paste::paste! {
             pub use super::[< __ $TY:lower >]::[< $ccmrx _input >]::[< CC $index S_A>] as [< CaptureSource $index >];
 
@@ -383,7 +384,7 @@ macro_rules! timer_channels {
             unsafe impl TargetAddress<PeripheralToMemory> for [< Channel $index InputCapture >] {
                 type MemSize = $size;
 
-                const REQUEST_LINE: Option<u8> = Some(DMAReq::[< $TY:camel Ch $index >]as u8);
+                const REQUEST_LINE: Option<u8> = dma_request_line!($TY, $index);
 
                 fn address(&self) -> usize {
                     let regs = unsafe { &*<$TY>::ptr() };
@@ -394,8 +395,22 @@ macro_rules! timer_channels {
     };
 }
 
+macro_rules! dma_request_line {
+    // TIM4 does not expose a DMAMUX request for channel 4 on this target.
+    (TIM4, 4) => {
+        None
+    };
+    ($TY:ident, $index:expr) => {
+        paste::paste! {
+            Some(DMAReq::[< $TY:camel Ch $index >] as u8)
+        }
+    };
+}
+
 timer_channels!(SamplingTimer, TIM2, u32);
 timer_channels!(ShadowSamplingTimer, TIM3, u16);
 
-timer_channels!(ReferenceTimer, TIM1, u16);
+timer_channels!(ReferenceTimer, TIM5, u32);
 timer_channels!(BeatTimer, TIM8, u16);
+timer_channels!(ReferenceTimer2, TIM4, u16);
+timer_channels!(BeatTimer2, TIM1, u16);

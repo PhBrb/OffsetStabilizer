@@ -232,6 +232,7 @@ mod app {
         adcs: (Adc0Input, Adc1Input),
         dacs: (Dac0Output, Dac1Output),
         beat_timer: crate::hardware::pounder::timestamp::InputCaptureTimer,
+        beat_timer2: crate::hardware::pounder::timestamp::InputCaptureTimer2,
         iir_state: [[[f32; 4]; IIR_CASCADE_LENGTH]; 2],
         generator: FrameGenerator,
         cpu_temp_sensor: stabilizer::hardware::cpu_temp_sensor::CpuTempSensor,
@@ -245,7 +246,7 @@ mod app {
         let clock = SystemTimer::new(|| Systick::now().ticks());
 
         // Configure the microcontroller
-        let (mut stabilizer, beat_timer, kasli_bdma, kasli_nss) =
+        let (mut stabilizer, beat_timer, beat_timer2, kasli_bdma, kasli_nss) =
             hardware::setup::setup::<Settings, 4>(
                 c.core,
                 c.device,
@@ -293,6 +294,7 @@ mod app {
             adcs: stabilizer.adcs,
             dacs: stabilizer.dacs,
             beat_timer: beat_timer,
+            beat_timer2: beat_timer2,
             iir_state: [[[0.; 4]; IIR_CASCADE_LENGTH]; 2],
             generator,
             cpu_temp_sensor: stabilizer.temperature_sensor,
@@ -309,6 +311,7 @@ mod app {
 
         stabilizer.timestamper.start();
         local.beat_timer.start();
+        local.beat_timer2.start();
 
         // Spawn a settings update for default settings.
         settings_update::spawn().unwrap();
@@ -343,7 +346,7 @@ mod app {
     ///
     /// Because the ADC and DAC operate at the same rate, these two constraints actually implement
     /// the same time bounds, meeting one also means the other is also met.
-    #[task(binds=DMA1_STR4, local=[digital_inputs, adcs, dacs, iir_state, beat_timer, generator], shared=[active_settings, source, telemetry], priority=3)]
+    #[task(binds=DMA1_STR4, local=[digital_inputs, adcs, dacs, iir_state, beat_timer, beat_timer2, generator], shared=[active_settings, source, telemetry], priority=3)]
     #[link_section = ".itcm.process"]
     fn process(c: process::Context) {
         let process::SharedResources {
@@ -358,6 +361,7 @@ mod app {
             adcs: (adc0, adc1),
             dacs: (dac0, dac1),
             beat_timer,
+            beat_timer2,
             iir_state,
             generator,
             ..
@@ -381,10 +385,13 @@ mod app {
 
                     let timestamp_diff = beat_timer.latest_timestamp_diff();
                     // Set all values in adc_samples to new_value
-                    for channel in 0..adc_samples.len() {
-                        for sample in adc_samples[channel].iter_mut() {
-                            *sample = timestamp_diff * 2;
-                        }
+                    for sample in adc_samples[0].iter_mut() {
+                        *sample = timestamp_diff * 2;
+                    }
+                    let timestamp_diff2 = beat_timer2.latest_timestamp_diff();
+                    // Set all values in adc_samples to new_value
+                    for sample in adc_samples[1].iter_mut() {
+                        *sample = timestamp_diff2 * 2;
                     }
 
                     for channel in 0..adc_samples.len() {
