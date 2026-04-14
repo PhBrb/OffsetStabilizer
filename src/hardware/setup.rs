@@ -114,7 +114,7 @@ pub struct StabilizerDevices<
     pub afes: (AFE0, AFE1),
     pub adcs: (adc::Adc0Input, adc::Adc1Input),
     pub dacs: (dac::Dac0Output, dac::Dac1Output),
-    pub timestamper2: crate::hardware::timers::ReferenceTimer2,
+    pub timestamper2: crate::hardware::timers::ReferenceTimer,
     pub adc_dac_timer: timers::SamplingTimer,
     pub net: NetworkDevices,
     pub digital_inputs: (DigitalInput0, DigitalInput1),
@@ -391,9 +391,7 @@ where
     let sampling_timer_channels = sampling_timer.channels();
     let shadow_sampling_timer_channels = shadow_sampling_timer.channels();
 
-    let mut ref_timer2_4 = {
-        // let _etr_pin = gpioe.pe7.into_alternate::<1>(); //see alternate function table
-
+    let mut ref_timer = {
         // The timer frequency is manually adjusted below, so the 1KHz setting here is a
         // dont-care.
         let mut timer4 =
@@ -403,13 +401,11 @@ where
         timer4.pause();
         timer4.set_tick_freq(crate::hardware::hal::time::MegaHertz::MHz(10).convert());
 
-        let mut ref_timer2 = timers::ReferenceTimer2::new(timer4);
+        let mut ret = timers::ReferenceTimer::new(timer4);
 
-        // ref_timer2.set_external_clock(timers::Prescaler::Div1);
+        ret.set_period_ticks(1000-1);
 
-        ref_timer2.set_period_ticks(1000-1);
-
-        ref_timer2
+        ret
     };
 
     // Configure the SPI interfaces to the ADCs and DACs.
@@ -886,7 +882,7 @@ where
         pounder::timestamp::InputCaptureTimer2::new(
             beat_timer1,
             beat_timer1_channels.ch1,
-            &mut ref_timer2_4,
+            &mut ref_timer,
         )
     };
 
@@ -1095,7 +1091,7 @@ where
             adc3.create_channel(hal::adc::Temperature::new()),
         ),
         usb_serial: usb_terminal,
-        timestamper2: ref_timer2_4,
+        timestamper2: ref_timer,
         net: network_devices,
         adc_dac_timer: sampling_timer,
         digital_inputs,
