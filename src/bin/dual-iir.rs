@@ -107,7 +107,13 @@ impl serial_settings::Settings for Settings {
 
 #[derive(Clone, Debug, Tree, Serialize, Deserialize)]
 pub struct DualIir {
-    offsetTarget0mu: Leaf<i16>,
+    /// Configure ADC input offset targets in machine units.
+    ///
+    /// # Path
+    /// `offset_target_mu/<n>`
+    ///
+    /// * `<n>` specifies which channel to configure. `<n>` := [0, 1]
+    offset_target_mu: [Leaf<i16>; 2],
 
     /// Configure the Analog Front End (AFE) gain.
     ///
@@ -185,7 +191,7 @@ impl Default for DualIir {
         i.set_min(-SCALE);
         i.set_max(SCALE);
         Self {
-            offsetTarget0mu: 10000.into(),
+            offset_target_mu: [10000.into(); 2],
             // Analog frontend programmable gain amplifier gains (G1, G2, G5, G10)
             afe: Default::default(),
             // IIR filter tap gains are an array `[b0, b1, b2, a1, a2]` such that the
@@ -400,7 +406,9 @@ mod app {
                             .zip(dac_samples[channel].iter_mut())
                             .zip(&mut source[channel])
                             .map(|((ai, di), signal)| {
-                                let x = f32::from((*ai as i16) - *settings.offsetTarget0mu);
+                                let x = f32::from(
+                                    (*ai as i16) - *settings.offset_target_mu[channel],
+                                );
                                 let y = settings.iir_ch[channel]
                                     .iter()
                                     .zip(iir_state[channel].iter_mut())
